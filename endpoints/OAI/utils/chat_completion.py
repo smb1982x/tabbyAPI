@@ -57,9 +57,6 @@ def _create_response(
 
     choices = []
     for index, generation in enumerate(generations):
-        message = ChatCompletionMessage(
-            role="assistant", content=unwrap(generation.get("text"), "")
-        )
         if config.model.reasoning:
             raw_content = unwrap(generation.get("text"), "")
             reasoning_content, content = _extract_think_content(raw_content)
