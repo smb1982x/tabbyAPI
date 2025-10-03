@@ -14,6 +14,7 @@ from common.parsers.abstract_reasoning_parser import (
     ReasoningParser,
     ReasoningParserManager,
 )
+from common.parsers.glm4_moe_tool_parser import Glm4MoeModelToolParser
 
 # Exports will be added as parsers are implemented
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "ReasoningParser",
     "ReasoningParserManager",
     "DeltaMessage",
+    "Glm4MoeModelToolParser",
 ]
