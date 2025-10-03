@@ -37,7 +37,7 @@ class ToolParser:
     def vocab(self) -> dict[str, int]:
         # NOTE: Only PreTrainedTokenizerFast is guaranteed to have .vocab
         # whereas all tokenizers have .get_vocab()
-        return self.model_tokenizer.get_vocab()
+        return self.model_tokenizer.get_vocab_dict()
 
     def adjust_request(self, request: ChatCompletionRequest) -> ChatCompletionRequest:
         """
