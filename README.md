@@ -1,4 +1,4 @@
-# TabbyAPI
+# TabbyAPI (Branch for GLM4 Tool and Reasoning Parsing)
 
 <p align="left">
     <img src="https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12-blue" alt="Python 3.10, 3.11, and 3.12">
