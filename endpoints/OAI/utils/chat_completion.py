@@ -3,6 +3,7 @@
 import asyncio
 import pathlib
 from asyncio import CancelledError
+from dataclasses import dataclass, field
 from typing import List, Optional
 from fastapi import HTTPException, Request
 from jinja2 import TemplateError
@@ -31,6 +32,33 @@ from endpoints.OAI.types.chat_completion import (
 from endpoints.OAI.types.common import UsageStats
 from endpoints.OAI.utils.completion import _parse_gen_request_id, _stream_collector
 from endpoints.OAI.utils.tools import ToolCallProcessor, TOOL_CALL_SCHEMA
+
+
+@dataclass
+class StreamingState:
+    """Maintains state across streaming chunks for parser integration.
+
+    Attributes:
+        previous_text: Accumulated text from all previous chunks
+        previous_token_ids: Accumulated token IDs from previous chunks
+        accumulated_tool_calls: Tool calls detected so far
+        in_reasoning: Whether currently inside reasoning tags
+    """
+
+    previous_text: str = ""
+    previous_token_ids: List[int] = field(default_factory=list)
+    accumulated_tool_calls: List = field(default_factory=list)
+    in_reasoning: bool = False
+
+    def update(self, current_text: str, current_token_ids: List[int]):
+        """Update state with current chunk data.
+
+        Args:
+            current_text: Text including current chunk
+            current_token_ids: Token IDs including current chunk
+        """
+        self.previous_text = current_text
+        self.previous_token_ids = current_token_ids
 
 
 def _parse_generation_output(
