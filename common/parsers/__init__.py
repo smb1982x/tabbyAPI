@@ -10,10 +10,16 @@ from common.parsers.abstract_tool_parser import (
     ToolParserManager,
     DeltaMessage,
 )
+from common.parsers.abstract_reasoning_parser import (
+    ReasoningParser,
+    ReasoningParserManager,
+)
 
 # Exports will be added as parsers are implemented
 __all__ = [
     "ToolParser",
     "ToolParserManager",
+    "ReasoningParser",
+    "ReasoningParserManager",
     "DeltaMessage",
 ]
