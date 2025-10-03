@@ -1,8 +1,17 @@
-"""
-GLM-4 MoE Parser Integration for TabbyAPI.
+"""Parser module for tool calling and reasoning extraction.
 
-This module provides tool call and reasoning parsers for GLM-4.5 family models.
-ExLlamaV3 backend only.
+This module provides abstract base classes and concrete implementations
+for parsing model output to extract tool calls and reasoning content.
+
+Supported Models:
+    - GLM-4.5 family (GLM-4.5, GLM-4.5-Air, GLM-4.5V)
+
+Usage:
+    from common.parsers import Glm4MoeModelToolParser, Glm4MoeModelReasoningParser
+    from exllamav3 import Tokenizer
+
+    tool_parser = Glm4MoeModelToolParser(tokenizer)
+    reasoning_parser = Glm4MoeModelReasoningParser(tokenizer)
 """
 
 from common.parsers.abstract_tool_parser import (
