@@ -4,7 +4,7 @@ import asyncio
 import pathlib
 from asyncio import CancelledError
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from fastapi import HTTPException, Request
 from jinja2 import TemplateError
 from loguru import logger
@@ -59,6 +59,42 @@ class StreamingState:
         """
         self.previous_text = current_text
         self.previous_token_ids = current_token_ids
+
+
+def _extract_token_ids(
+    generation: dict,
+    delta_text: str,
+    previous_token_ids: List[int],
+    container: ExllamaV3Container
+) -> Tuple[List[int], List[int]]:
+    """Extract token IDs from generation chunk with fallback strategies.
+
+    Args:
+        generation: Generation chunk dict
+        delta_text: Text from current chunk
+        previous_token_ids: Token IDs from previous chunks
+        container: Model container with tokenizer
+
+    Returns:
+        Tuple of (current_token_ids, delta_token_ids)
+    """
+    # Strategy 1: Check if token IDs available in generation chunk
+    if "token_ids" in generation:
+        current_token_ids = generation["token_ids"]
+        delta_token_ids = current_token_ids[len(previous_token_ids):]
+        return (current_token_ids, delta_token_ids)
+
+    # Strategy 2: Encode delta text to get approximate token IDs
+    if delta_text and container.tokenizer:
+        try:
+            delta_token_ids = container.tokenizer.encode(delta_text)
+            current_token_ids = previous_token_ids + delta_token_ids
+            return (current_token_ids, delta_token_ids)
+        except Exception as e:
+            logger.debug(f"Token encoding failed: {e}")
+
+    # Strategy 3: Fallback to empty lists (text-only parsing)
+    return ([], [])
 
 
 def _parse_generation_output(
