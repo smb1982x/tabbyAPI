@@ -83,19 +83,36 @@ def _parse_generation_output(
 
 
 def _create_response(
-    request_id: str, generations: List[dict], model_name: Optional[str]
+    request_id: str,
+    generations: List[dict],
+    model_name: Optional[str],
+    request: ChatCompletionRequest,
+    container: ExllamaV3Container
 ):
-    """Create a chat completion response from the provided text."""
+    """Create a chat completion response from the provided generations.
 
+    Args:
+        request_id: Unique request identifier
+        generations: List of generation dicts from model
+        model_name: Name of the model used
+        request: Original chat completion request
+        container: Model container with optional parsers
+
+    Returns:
+        ChatCompletionResponse
+    """
     choices = []
     for index, generation in enumerate(generations):
-        message = ChatCompletionMessage(
-            role="assistant", content=unwrap(generation.get("text"), "")
-        )
+        # Parse output with parsers
+        parsed = _parse_generation_output(generation, request, container)
 
-        tool_calls = generation["tool_calls"]
-        if tool_calls:
-            message.tool_calls = ToolCallProcessor.from_json(tool_calls)
+        # Build message with all extracted data
+        message = ChatCompletionMessage(
+            role="assistant",
+            content=parsed["content"],
+            reasoning_content=parsed["reasoning_content"],
+            tool_calls=parsed["tool_calls"]
+        )
 
         logprob_response = None
 
@@ -495,7 +512,9 @@ async def generate_chat_completion(
                 prompt, embeddings, data, generations, request
             )
 
-        response = _create_response(request.state.id, generations, model_path.name)
+        response = _create_response(
+            request.state.id, generations, model_path.name, data, model.container
+        )
 
         logger.info(f"Finished chat completion request {request.state.id}")
 
