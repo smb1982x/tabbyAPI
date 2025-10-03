@@ -14,17 +14,17 @@ Usage:
     reasoning_parser = Glm4MoeModelReasoningParser(tokenizer)
 """
 
-from common.parsers.abstract_tool_parser import (
+from .abstract_tool_parser import (
     ToolParser,
     ToolParserManager,
     DeltaMessage,
 )
-from common.parsers.abstract_reasoning_parser import (
+from .abstract_reasoning_parser import (
     ReasoningParser,
     ReasoningParserManager,
 )
-from common.parsers.glm4_moe_tool_parser import Glm4MoeModelToolParser
-from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
+from .glm4_moe_tool_parser import Glm4MoeModelToolParser
+from .glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
 
 # Exports will be added as parsers are implemented
 __all__ = [
