@@ -90,6 +90,58 @@ TabbyAPI uses Exllama as a powerful and fast backend for model inference, loadin
 
 In addition, TabbyAPI supports parallel batching using paged attention for Nvidia Ampere GPUs and higher.
 
+## GLM-4.5 Model Support
+
+TabbyAPI includes native support for GLM-4.5 family models with advanced capabilities:
+
+### Features
+
+- **OpenAI-Compatible Tool Calling**: GLM-4.5's XML-based tool calls are automatically converted to OpenAI JSON format
+- **Reasoning Content Extraction**: Separates thinking process (`<think>` tags) from final responses
+- **Streaming Support**: Both features work in streaming and non-streaming modes
+- **Automatic Initialization**: Parsers activate automatically when loading GLM-4.5 models
+
+### Supported Models
+
+- GLM-4.5
+- GLM-4.5-Air
+- GLM-4.5V
+
+### Requirements
+
+- **ExLlamaV3 backend required** (ExLlamaV2 not supported)
+- No additional configuration needed - parsers auto-initialize
+
+### Usage
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:5000/v1", api_key="dummy")
+
+# Tool calling works out of the box
+response = client.chat.completions.create(
+    model="GLM-4.5-Air",
+    messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "parameters": {
+                "type": "object",
+                "properties": {"location": {"type": "string"}}
+            }
+        }
+    }]
+)
+
+# Access reasoning content
+if response.choices[0].message.reasoning_content:
+    print("Reasoning:", response.choices[0].message.reasoning_content)
+```
+
+For detailed documentation, see [GLM-4 Parser Documentation](docs/glm4_parsers.md).
+
 ## Contributing
 
 Use the template when creating issues or pull requests, otherwise the developers may not look at your post.
