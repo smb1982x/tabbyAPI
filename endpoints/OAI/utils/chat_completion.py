@@ -578,6 +578,9 @@ async def stream_generate_chat_completion(
 
             gen_tasks.append(gen_task)
 
+        # Initialize streaming state for parser integration
+        state = StreamingState()
+
         # Text accumulation for tool calls
         current_generation_text = ""
 
@@ -611,9 +614,36 @@ async def stream_generate_chat_completion(
             if isinstance(generation, Exception):
                 raise generation
 
-            response = _create_stream_chunk(
-                request.state.id, generation, model_path.name
+            # Extract chunk data for parsers
+            delta_text = generation.get("text", "") if "text" in generation else ""
+            current_text = state.previous_text + delta_text
+
+            # Extract token IDs using strategy from T015
+            current_token_ids, delta_token_ids = _extract_token_ids(
+                generation=generation,
+                delta_text=delta_text,
+                previous_token_ids=state.previous_token_ids,
+                container=model.container
             )
+
+            # Create chunk with parser integration
+            response = _create_stream_chunk(
+                request_id=request.state.id,
+                generation=generation,
+                model_name=model_path.name,
+                request=data,
+                container=model.container,
+                previous_text=state.previous_text,
+                current_text=current_text,
+                delta_text=delta_text,
+                previous_token_ids=state.previous_token_ids,
+                current_token_ids=current_token_ids,
+                delta_token_ids=delta_token_ids
+            )
+
+            # Update state for next iteration
+            state.update(current_text, current_token_ids)
+
             yield response.model_dump_json()
 
             # Check if all tasks are completed
@@ -621,10 +651,12 @@ async def stream_generate_chat_completion(
                 # Send a usage chunk
                 if data.stream_options and data.stream_options.include_usage:
                     usage_chunk = _create_stream_chunk(
-                        request.state.id,
-                        generation,
-                        model_path.name,
+                        request_id=request.state.id,
+                        generation=generation,
+                        model_name=model_path.name,
                         is_usage_chunk=True,
+                        request=data,
+                        container=model.container
                     )
                     yield usage_chunk.model_dump_json()
 
