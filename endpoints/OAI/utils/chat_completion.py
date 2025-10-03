@@ -245,10 +245,42 @@ def _create_stream_chunk(
     generation: Optional[dict] = None,
     model_name: Optional[str] = None,
     is_usage_chunk: bool = False,
+    request: Optional[ChatCompletionRequest] = None,
+    container: Optional[ExllamaV3Container] = None,
+    previous_text: str = "",
+    current_text: str = "",
+    delta_text: str = "",
+    previous_token_ids: Optional[List[int]] = None,
+    current_token_ids: Optional[List[int]] = None,
+    delta_token_ids: Optional[List[int]] = None,
 ):
-    """Create a chat completion stream chunk from the provided text."""
+    """Create a chat completion stream chunk with parser integration.
 
-    index = generation.get("index")
+    Args:
+        request_id: Unique request identifier
+        generation: Generation chunk dict
+        model_name: Name of the model
+        is_usage_chunk: Whether this is a usage-only chunk
+        request: Original chat completion request
+        container: Model container with optional parsers
+        previous_text: Accumulated text from previous chunks
+        current_text: Accumulated text including current chunk
+        delta_text: Text from current chunk only
+        previous_token_ids: Token IDs from previous chunks
+        current_token_ids: Token IDs including current chunk
+        delta_token_ids: Token IDs from current chunk only
+
+    Returns:
+        ChatCompletionStreamChunk
+    """
+    if previous_token_ids is None:
+        previous_token_ids = []
+    if current_token_ids is None:
+        current_token_ids = []
+    if delta_token_ids is None:
+        delta_token_ids = []
+
+    index = generation.get("index") if generation else 0
     choices = []
     usage_stats = None
 
@@ -269,11 +301,48 @@ def _create_stream_chunk(
     elif "finish_reason" in generation:
         # Get the finish reason from the generation
         finish_reason = generation.get("finish_reason")
-        choice = ChatCompletionStreamChoice(index=index, finish_reason=finish_reason)
 
-        # lets check if we have tool calls since we are at the end of the generation
+        # Try to get delta message from parsers for finish chunk
+        delta_message = None
+        if container and not is_usage_chunk:
+            # Try reasoning parser first
+            if container.reasoning_parser:
+                try:
+                    delta_message = container.reasoning_parser.extract_reasoning_content_streaming(
+                        previous_text=previous_text,
+                        current_text=current_text,
+                        delta_text=delta_text,
+                        previous_token_ids=previous_token_ids,
+                        current_token_ids=current_token_ids,
+                        delta_token_ids=delta_token_ids
+                    )
+                except Exception as e:
+                    logger.warning(f"Reasoning parsing failed in streaming (finish): {e}")
+
+            # Try tool parser if no reasoning delta and tools are present
+            if not delta_message and container.tool_parser and request and request.tools:
+                try:
+                    delta_message = container.tool_parser.extract_tool_calls_streaming(
+                        previous_text=previous_text,
+                        current_text=current_text,
+                        delta_text=delta_text,
+                        previous_token_ids=previous_token_ids,
+                        current_token_ids=current_token_ids,
+                        delta_token_ids=delta_token_ids,
+                        request=request
+                    )
+                except Exception as e:
+                    logger.warning(f"Tool parsing failed in streaming (finish): {e}")
+
+        choice = ChatCompletionStreamChoice(
+            index=index,
+            finish_reason=finish_reason,
+            delta=delta_message
+        )
+
+        # Legacy: check if we have tool calls since we are at the end of the generation
         # Mark finish_reason as tool_calls since this is the last chunk
-        if "tool_calls" in generation:
+        if not delta_message and "tool_calls" in generation:
             tool_calls = generation["tool_calls"]
             message = ChatCompletionMessage(
                 tool_calls=ToolCallProcessor.from_json(tool_calls)
@@ -283,15 +352,51 @@ def _create_stream_chunk(
 
         choices.append(choice)
     else:
-        message = ChatCompletionMessage(
-            role="assistant", content=unwrap(generation.get("text"), "")
-        )
+        # Try parsers for delta message
+        delta_message = None
+        if container and not is_usage_chunk:
+            # Try reasoning parser first
+            if container.reasoning_parser:
+                try:
+                    delta_message = container.reasoning_parser.extract_reasoning_content_streaming(
+                        previous_text=previous_text,
+                        current_text=current_text,
+                        delta_text=delta_text,
+                        previous_token_ids=previous_token_ids,
+                        current_token_ids=current_token_ids,
+                        delta_token_ids=delta_token_ids
+                    )
+                except Exception as e:
+                    logger.warning(f"Reasoning parsing failed in streaming: {e}")
+
+            # Try tool parser if no reasoning delta and tools are present
+            if not delta_message and container.tool_parser and request and request.tools:
+                try:
+                    delta_message = container.tool_parser.extract_tool_calls_streaming(
+                        previous_text=previous_text,
+                        current_text=current_text,
+                        delta_text=delta_text,
+                        previous_token_ids=previous_token_ids,
+                        current_token_ids=current_token_ids,
+                        delta_token_ids=delta_token_ids,
+                        request=request
+                    )
+                except Exception as e:
+                    logger.warning(f"Tool parsing failed in streaming: {e}")
+
+        # Fallback to basic content delta
+        if not delta_message:
+            message = ChatCompletionMessage(
+                role="assistant", content=unwrap(generation.get("text"), "") if generation else delta_text
+            )
+        else:
+            message = delta_message
 
         logprob_response = None
 
-        token_probs = unwrap(generation.get("token_probs"), {})
+        token_probs = unwrap(generation.get("token_probs"), {}) if generation else {}
         if token_probs:
-            logprobs = unwrap(generation.get("logprobs"), {})
+            logprobs = unwrap(generation.get("logprobs"), {}) if generation else {}
             top_logprobs = [
                 ChatCompletionLogprob(token=token, logprob=logprob)
                 for token, logprob in logprobs.items()
