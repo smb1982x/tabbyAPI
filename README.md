@@ -1,5 +1,46 @@
 # TabbyAPI (Branch for GLM4 Tool and Reasoning Parsing)
 
+---
+## Added GLM4.5 Tool and Reasoning parser, now outputs in OpenAI API Compatible JSON Tool calls and Reasoning.
+
+### Modified Files
+```
+backends/exllamav3/model.py
+endpoints/OAI/router.py
+endpoints/OAI/types/chat_completion.py
+endpoints/OAI/types/common.py
+endpoints/OAI/types/completion.py
+endpoints/OAI/types/tools.py
+endpoints/OAI/utils/chat_completion.py
+endpoints/OAI/utils/completion.py
+endpoints/OAI/utils/embeddings.py
+endpoints/OAI/utils/tools.py
+pyproject.toml
+README.md
+```
+
+### New Files
+```
+common/parsers/abstract_reasoning_parser.py
+common/parsers/abstract_tool_parser.py
+common/parsers/glm4_moe_reasoning_parser.py
+common/parsers/glm4_moe_tool_parser.py
+common/parsers/__init__.py
+docs/glm4_parsers.md
+tests/integration/test_parser_integration.py
+tests/integration/test_streaming_integration.py
+tests/parsers/__init__.py
+tests/parsers/test_glm4_reasoning_parser.py
+tests/parsers/test_glm4_tool_parser.py
+tests/parsers/test_parser_managers.py
+tests/types/test_extended_types.py
+```
+
+
+---
+
+<Original README.d Below>
+
 <p align="left">
     <img src="https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12-blue" alt="Python 3.10, 3.11, and 3.12">
     <a href="/LICENSE">
