@@ -28,6 +28,8 @@ from backends.exllamav3.sampler import ExllamaV3SamplerBuilder
 from backends.exllamav3.utils import exllama_supports_nccl
 from backends.exllamav3.vision import clear_image_embedding_cache
 from common.concurrency import iterate_in_threadpool
+from common.parsers.abstract_tool_parser import ToolParser
+from common.parsers.abstract_reasoning_parser import ReasoningParser
 from common.gen_logging import (
     log_generation_params,
     log_metrics,
@@ -73,6 +75,10 @@ class ExllamaV3Container(BaseModelContainer):
     draft_config: Optional[Config] = None
     generator: Optional[AsyncGenerator] = None
     vision_model: Optional[Model] = None
+
+    # Parser instances (initialized for compatible models)
+    tool_parser: Optional[ToolParser] = None
+    reasoning_parser: Optional[ReasoningParser] = None
 
     # Class-specific vars
     gpu_split: Optional[List[float]] = None
