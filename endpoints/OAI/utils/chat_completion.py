@@ -17,6 +17,7 @@ from common.networking import (
     request_disconnect_loop,
 )
 from common.utils import unwrap
+from backends.exllamav3.model import ExllamaV3Container
 from endpoints.OAI.types.chat_completion import (
     ChatCompletionLogprobs,
     ChatCompletionLogprob,
@@ -30,6 +31,55 @@ from endpoints.OAI.types.chat_completion import (
 from endpoints.OAI.types.common import UsageStats
 from endpoints.OAI.utils.completion import _parse_gen_request_id, _stream_collector
 from endpoints.OAI.utils.tools import ToolCallProcessor, TOOL_CALL_SCHEMA
+
+
+def _parse_generation_output(
+    generation: dict,
+    request: ChatCompletionRequest,
+    container: ExllamaV3Container
+) -> dict:
+    """Parse tool calls and reasoning from generation output.
+
+    Args:
+        generation: Generation dict containing 'text' field
+        request: Original chat completion request
+        container: Model container with optional parsers
+
+    Returns:
+        Dict with keys: content, reasoning_content, tool_calls
+    """
+    output_text = generation.get("text", "")
+    parsed_data = {
+        "content": output_text,
+        "reasoning_content": None,
+        "tool_calls": None
+    }
+
+    # Extract reasoning if parser available
+    if container.reasoning_parser:
+        try:
+            reasoning_content, content = container.reasoning_parser.extract_reasoning_content(
+                output_text, request
+            )
+            parsed_data["reasoning_content"] = reasoning_content
+            parsed_data["content"] = content
+        except Exception as e:
+            logger.warning(f"Reasoning extraction failed: {e}")
+            parsed_data["content"] = output_text
+
+    # Extract tool calls if parser available and tools present in request
+    if container.tool_parser and request.tools:
+        try:
+            tool_info = container.tool_parser.extract_tool_calls(
+                parsed_data["content"] or output_text, request
+            )
+            if tool_info.tools_called:
+                parsed_data["tool_calls"] = tool_info.tool_calls
+                parsed_data["content"] = tool_info.content
+        except Exception as e:
+            logger.warning(f"Tool extraction failed: {e}")
+
+    return parsed_data
 
 
 def _create_response(
