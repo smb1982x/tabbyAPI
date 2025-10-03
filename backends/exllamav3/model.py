@@ -268,6 +268,35 @@ class ExllamaV3Container(BaseModelContainer):
                 "template wasn't provided or auto-detected."
             )
 
+        # Auto-detect and initialize parsers for GLM-4.5 models
+        model_name = model_directory.name.lower()
+        is_glm45 = (
+            "glm" in model_name and
+            ("4.5" in model_name or "4-5" in model_name or "45" in model_name)
+        )
+
+        if is_glm45:
+            try:
+                from common.parsers.glm4_moe_tool_parser import Glm4MoeModelToolParser
+                from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
+
+                self.tool_parser = Glm4MoeModelToolParser(self.tokenizer)
+                self.reasoning_parser = Glm4MoeModelReasoningParser(self.tokenizer)
+
+                logger.info(
+                    f"Initialized GLM-4.5 parsers for model: {model_directory.name}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to initialize GLM-4.5 parsers: {e}. "
+                    "Tool calling and reasoning extraction will be unavailable."
+                )
+                self.tool_parser = None
+                self.reasoning_parser = None
+        else:
+            self.tool_parser = None
+            self.reasoning_parser = None
+
         return self
 
     def adjust_cache_size(self, cache_size):
