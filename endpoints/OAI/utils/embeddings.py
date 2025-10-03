@@ -8,8 +8,9 @@ embeddings function declared async.
 """
 
 import base64
-from fastapi import Request
+
 import numpy as np
+from fastapi import Request
 from loguru import logger
 
 from common import model
@@ -48,9 +49,11 @@ async def get_embeddings(data: EmbeddingsRequest, request: Request) -> dict:
     # OAI expects a return of base64 if the input is base64
     embedding_object = [
         EmbeddingObject(
-            embedding=float_list_to_base64(emb)
-            if data.encoding_format == "base64"
-            else emb.tolist(),
+            embedding=(
+                float_list_to_base64(emb)
+                if data.encoding_format == "base64"
+                else emb.tolist()
+            ),
             index=n,
         )
         for n, emb in enumerate(embedding_data.get("embeddings"))

@@ -10,7 +10,6 @@ import pytest
 from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
 from endpoints.OAI.types.chat_completion import ChatCompletionRequest, DeltaMessage
 
-
 # ========================================================================
 # Test Utilities (Inline) - Ported from vllm/tests/reasoning/utils.py
 # ========================================================================
@@ -27,8 +26,8 @@ class StreamingReasoningReconstructor:
         # content and the reasoning content should not be present
         # at the same time
         assert delta.content is None or delta.reasoning_content is None, (
-            "Both content and reasoning content are present in the "
-            "delta message")
+            "Both content and reasoning content are present in the " "delta message"
+        )
         if delta.content is not None:
             if self.other_content is None:
                 self.other_content = delta.content
@@ -49,7 +48,8 @@ def run_reasoning_extraction_nonstreaming(
     """Helper to run non-streaming reasoning extraction."""
     request = request or ChatCompletionRequest(messages=[], model="test-model")
     return reasoning_parser.extract_reasoning_content(
-        model_output=''.join(model_output), request=request)
+        model_output="".join(model_output), request=request
+    )
 
 
 def run_reasoning_extraction_streaming(
@@ -105,7 +105,8 @@ def run_reasoning_extraction(
         )
     else:
         reasoning, content = run_reasoning_extraction_nonstreaming(
-            reasoning_parser, model_output, request)
+            reasoning_parser, model_output, request
+        )
         return reasoning, content
 
 
@@ -135,15 +136,22 @@ def glm45_tokenizer():
             """Simple tokenization by characters for testing."""
             # Split by special tokens first
             tokens = []
-            special_tokens = ["<think>", "</think>", "<|assistant|>",
-                              "[gMASK]", "<sop>", "<|system|>", "<|user|>"]
+            special_tokens = [
+                "<think>",
+                "</think>",
+                "<|assistant|>",
+                "[gMASK]",
+                "<sop>",
+                "<|system|>",
+                "<|user|>",
+            ]
             remaining = text
             while remaining:
                 found = False
                 for special in special_tokens:
                     if remaining.startswith(special):
                         tokens.append(special)
-                        remaining = remaining[len(special):]
+                        remaining = remaining[len(special) :]
                         found = True
                         break
                 if not found:
@@ -153,13 +161,15 @@ def glm45_tokenizer():
 
         def convert_tokens_to_string(self, tokens: list[str]) -> str:
             """Convert tokens back to string."""
-            return ''.join(tokens)
+            return "".join(tokens)
 
         def convert_tokens_to_ids(self, tokens: list[str]) -> list[int]:
             """Convert tokens to IDs."""
             vocab = self.get_vocab()
-            return [vocab.get(token, ord(token[0]) if len(token) == 1 else 0)
-                    for token in tokens]
+            return [
+                vocab.get(token, ord(token[0]) if len(token) == 1 else 0)
+                for token in tokens
+            ]
 
         def convert_ids_to_tokens(self, ids: list[int]) -> list[str]:
             """Convert IDs to tokens."""
@@ -211,8 +221,7 @@ COMPLETE_REASONING = {
 }
 
 MULTILINE_REASONING = {
-    "output":
-    "<think>This is a reasoning\nsection</think>This is the rest\nThat",
+    "output": "<think>This is a reasoning\nsection</think>This is the rest\nThat",
     "reasoning_content": "This is a reasoning\nsection",
     "content": "This is the rest\nThat",
     "is_reasoning_end": True,
@@ -316,12 +325,12 @@ The capital of Chile is Santiago."""
 REASONING_END_TEST_CASES = [
     pytest.param(STILL_REASONING_PROMPT, False, id="still_reasoning"),
     pytest.param(DONE_REASONING_PROMPT, True, id="done_reasoning"),
-    pytest.param(MULTI_TURN_STILL_REASONING_PROMPT,
-                 False,
-                 id="multi_turn_still_reasoning"),
-    pytest.param(MULTI_TURN_DONE_REASONING_PROMPT,
-                 True,
-                 id="multi_turn_done_reasoning")
+    pytest.param(
+        MULTI_TURN_STILL_REASONING_PROMPT, False, id="multi_turn_still_reasoning"
+    ),
+    pytest.param(
+        MULTI_TURN_DONE_REASONING_PROMPT, True, id="multi_turn_done_reasoning"
+    ),
 ]
 
 
@@ -343,9 +352,9 @@ def test_reasoning(
     ]
     parser = Glm4MoeModelReasoningParser(glm45_tokenizer)
 
-    reasoning, content = run_reasoning_extraction(parser,
-                                                  output_tokens,
-                                                  streaming=streaming)
+    reasoning, content = run_reasoning_extraction(
+        parser, output_tokens, streaming=streaming
+    )
 
     assert reasoning == param_dict["reasoning_content"]
     assert content == param_dict["content"]
@@ -356,8 +365,9 @@ def test_reasoning(
 
 
 @pytest.mark.parametrize("prompt, is_reasoning_end", REASONING_END_TEST_CASES)
-def test_is_reasoning_end_full_prompt(prompt: str, is_reasoning_end: bool,
-                                      glm45_tokenizer):
+def test_is_reasoning_end_full_prompt(
+    prompt: str, is_reasoning_end: bool, glm45_tokenizer
+):
     """Test is_reasoning_end with full prompts including multi-turn conversations."""
     parser = Glm4MoeModelReasoningParser(glm45_tokenizer)
     tokens = glm45_tokenizer.tokenize(prompt)

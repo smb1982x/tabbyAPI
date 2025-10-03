@@ -5,10 +5,12 @@ import pathlib
 from asyncio import CancelledError
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
+
 from fastapi import HTTPException, Request
 from jinja2 import TemplateError
 from loguru import logger
 
+from backends.exllamav3.model import ExllamaV3Container
 from common import model
 from common.multimodal import MultimodalEmbeddingWrapper
 from common.networking import (
@@ -18,20 +20,19 @@ from common.networking import (
     request_disconnect_loop,
 )
 from common.utils import unwrap
-from backends.exllamav3.model import ExllamaV3Container
 from endpoints.OAI.types.chat_completion import (
-    ChatCompletionLogprobs,
     ChatCompletionLogprob,
+    ChatCompletionLogprobs,
     ChatCompletionMessage,
     ChatCompletionRequest,
     ChatCompletionRespChoice,
-    ChatCompletionStreamChunk,
     ChatCompletionResponse,
     ChatCompletionStreamChoice,
+    ChatCompletionStreamChunk,
 )
 from endpoints.OAI.types.common import UsageStats
 from endpoints.OAI.utils.completion import _parse_gen_request_id, _stream_collector
-from endpoints.OAI.utils.tools import ToolCallProcessor, TOOL_CALL_SCHEMA
+from endpoints.OAI.utils.tools import TOOL_CALL_SCHEMA, ToolCallProcessor
 
 
 @dataclass
@@ -65,7 +66,7 @@ def _extract_token_ids(
     generation: dict,
     delta_text: str,
     previous_token_ids: List[int],
-    container: ExllamaV3Container
+    container: ExllamaV3Container,
 ) -> Tuple[List[int], List[int]]:
     """Extract token IDs from generation chunk with fallback strategies.
 
@@ -81,7 +82,7 @@ def _extract_token_ids(
     # Strategy 1: Check if token IDs available in generation chunk
     if "token_ids" in generation:
         current_token_ids = generation["token_ids"]
-        delta_token_ids = current_token_ids[len(previous_token_ids):]
+        delta_token_ids = current_token_ids[len(previous_token_ids) :]
         return (current_token_ids, delta_token_ids)
 
     # Strategy 2: Encode delta text to get approximate token IDs
@@ -98,9 +99,7 @@ def _extract_token_ids(
 
 
 def _parse_generation_output(
-    generation: dict,
-    request: ChatCompletionRequest,
-    container: ExllamaV3Container
+    generation: dict, request: ChatCompletionRequest, container: ExllamaV3Container
 ) -> dict:
     """Parse tool calls and reasoning from generation output.
 
@@ -116,14 +115,16 @@ def _parse_generation_output(
     parsed_data = {
         "content": output_text,
         "reasoning_content": None,
-        "tool_calls": None
+        "tool_calls": None,
     }
 
     # Extract reasoning if parser available
     if container.reasoning_parser:
         try:
-            reasoning_content, content = container.reasoning_parser.extract_reasoning_content(
-                output_text, request
+            reasoning_content, content = (
+                container.reasoning_parser.extract_reasoning_content(
+                    output_text, request
+                )
             )
             parsed_data["reasoning_content"] = reasoning_content
             parsed_data["content"] = content
@@ -151,7 +152,7 @@ def _create_response(
     generations: List[dict],
     model_name: Optional[str],
     request: ChatCompletionRequest,
-    container: ExllamaV3Container
+    container: ExllamaV3Container,
 ):
     """Create a chat completion response from the provided generations.
 
@@ -175,7 +176,7 @@ def _create_response(
             role="assistant",
             content=parsed["content"],
             reasoning_content=parsed["reasoning_content"],
-            tool_calls=parsed["tool_calls"]
+            tool_calls=parsed["tool_calls"],
         )
 
         logprob_response = None
@@ -308,19 +309,28 @@ def _create_stream_chunk(
             # Try reasoning parser first
             if container.reasoning_parser:
                 try:
-                    delta_message = container.reasoning_parser.extract_reasoning_content_streaming(
-                        previous_text=previous_text,
-                        current_text=current_text,
-                        delta_text=delta_text,
-                        previous_token_ids=previous_token_ids,
-                        current_token_ids=current_token_ids,
-                        delta_token_ids=delta_token_ids
+                    delta_message = (
+                        container.reasoning_parser.extract_reasoning_content_streaming(
+                            previous_text=previous_text,
+                            current_text=current_text,
+                            delta_text=delta_text,
+                            previous_token_ids=previous_token_ids,
+                            current_token_ids=current_token_ids,
+                            delta_token_ids=delta_token_ids,
+                        )
                     )
                 except Exception as e:
-                    logger.warning(f"Reasoning parsing failed in streaming (finish): {e}")
+                    logger.warning(
+                        f"Reasoning parsing failed in streaming (finish): {e}"
+                    )
 
             # Try tool parser if no reasoning delta and tools are present
-            if not delta_message and container.tool_parser and request and request.tools:
+            if (
+                not delta_message
+                and container.tool_parser
+                and request
+                and request.tools
+            ):
                 try:
                     delta_message = container.tool_parser.extract_tool_calls_streaming(
                         previous_text=previous_text,
@@ -329,15 +339,13 @@ def _create_stream_chunk(
                         previous_token_ids=previous_token_ids,
                         current_token_ids=current_token_ids,
                         delta_token_ids=delta_token_ids,
-                        request=request
+                        request=request,
                     )
                 except Exception as e:
                     logger.warning(f"Tool parsing failed in streaming (finish): {e}")
 
         choice = ChatCompletionStreamChoice(
-            index=index,
-            finish_reason=finish_reason,
-            delta=delta_message
+            index=index, finish_reason=finish_reason, delta=delta_message
         )
 
         # Legacy: check if we have tool calls since we are at the end of the generation
@@ -358,19 +366,26 @@ def _create_stream_chunk(
             # Try reasoning parser first
             if container.reasoning_parser:
                 try:
-                    delta_message = container.reasoning_parser.extract_reasoning_content_streaming(
-                        previous_text=previous_text,
-                        current_text=current_text,
-                        delta_text=delta_text,
-                        previous_token_ids=previous_token_ids,
-                        current_token_ids=current_token_ids,
-                        delta_token_ids=delta_token_ids
+                    delta_message = (
+                        container.reasoning_parser.extract_reasoning_content_streaming(
+                            previous_text=previous_text,
+                            current_text=current_text,
+                            delta_text=delta_text,
+                            previous_token_ids=previous_token_ids,
+                            current_token_ids=current_token_ids,
+                            delta_token_ids=delta_token_ids,
+                        )
                     )
                 except Exception as e:
                     logger.warning(f"Reasoning parsing failed in streaming: {e}")
 
             # Try tool parser if no reasoning delta and tools are present
-            if not delta_message and container.tool_parser and request and request.tools:
+            if (
+                not delta_message
+                and container.tool_parser
+                and request
+                and request.tools
+            ):
                 try:
                     delta_message = container.tool_parser.extract_tool_calls_streaming(
                         previous_text=previous_text,
@@ -379,7 +394,7 @@ def _create_stream_chunk(
                         previous_token_ids=previous_token_ids,
                         current_token_ids=current_token_ids,
                         delta_token_ids=delta_token_ids,
-                        request=request
+                        request=request,
                     )
                 except Exception as e:
                     logger.warning(f"Tool parsing failed in streaming: {e}")
@@ -387,7 +402,10 @@ def _create_stream_chunk(
         # Fallback to basic content delta
         if not delta_message:
             message = ChatCompletionMessage(
-                role="assistant", content=unwrap(generation.get("text"), "") if generation else delta_text
+                role="assistant",
+                content=(
+                    unwrap(generation.get("text"), "") if generation else delta_text
+                ),
             )
         else:
             message = delta_message
@@ -623,7 +641,7 @@ async def stream_generate_chat_completion(
                 generation=generation,
                 delta_text=delta_text,
                 previous_token_ids=state.previous_token_ids,
-                container=model.container
+                container=model.container,
             )
 
             # Create chunk with parser integration
@@ -638,7 +656,7 @@ async def stream_generate_chat_completion(
                 delta_text=delta_text,
                 previous_token_ids=state.previous_token_ids,
                 current_token_ids=current_token_ids,
-                delta_token_ids=delta_token_ids
+                delta_token_ids=delta_token_ids,
             )
 
             # Update state for next iteration
@@ -656,7 +674,7 @@ async def stream_generate_chat_completion(
                         model_name=model_path.name,
                         is_usage_chunk=True,
                         request=data,
-                        container=model.container
+                        container=model.container,
                     )
                     yield usage_chunk.model_dump_json()
 

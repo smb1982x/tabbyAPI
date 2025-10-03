@@ -2,20 +2,20 @@
 # Integration tests for parser integration with streaming generation pipeline
 # Tests streaming tool calls, reasoning, state management, and buffering
 
-import pytest
 from unittest.mock import MagicMock
 
-from endpoints.OAI.utils.chat_completion import (
-    _create_stream_chunk,
-    StreamingState,
-    _extract_token_ids
-)
-from endpoints.OAI.types.chat_completion import ChatCompletionRequest
-from endpoints.OAI.types.tools import ToolSpec, Function
-from backends.exllamav3.model import ExllamaV3Container
-from common.parsers.glm4_moe_tool_parser import Glm4MoeModelToolParser
-from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
+import pytest
 
+from backends.exllamav3.model import ExllamaV3Container
+from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
+from common.parsers.glm4_moe_tool_parser import Glm4MoeModelToolParser
+from endpoints.OAI.types.chat_completion import ChatCompletionRequest
+from endpoints.OAI.types.tools import Function, ToolSpec
+from endpoints.OAI.utils.chat_completion import (
+    StreamingState,
+    _create_stream_chunk,
+    _extract_token_ids,
+)
 
 # ========================================================================
 # Test Fixtures
@@ -25,6 +25,7 @@ from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
 @pytest.fixture
 def mock_tokenizer():
     """Create mock tokenizer for parser initialization and token encoding."""
+
     class MockTokenizer:
         def get_vocab(self):
             """Return vocabulary with GLM-4.5 special tokens."""
@@ -90,7 +91,7 @@ def test_streaming_tool_call_chunks(mock_container_with_parsers):
         "_call>get_weather\n",
         "<arg_key>location</arg_key>\n",
         "<arg_value>Paris</arg_value>\n",
-        "</tool_call>"
+        "</tool_call>",
     ]
 
     request = ChatCompletionRequest(
@@ -105,11 +106,11 @@ def test_streaming_tool_call_chunks(mock_container_with_parsers):
                     parameters={
                         "type": "object",
                         "properties": {"location": {"type": "string"}},
-                        "required": ["location"]
-                    }
-                )
+                        "required": ["location"],
+                    },
+                ),
             )
-        ]
+        ],
     )
 
     state = StreamingState()
@@ -121,7 +122,7 @@ def test_streaming_tool_call_chunks(mock_container_with_parsers):
             generation={},
             delta_text=chunk_text,
             previous_token_ids=state.previous_token_ids,
-            container=mock_container_with_parsers
+            container=mock_container_with_parsers,
         )
 
         stream_chunk = _create_stream_chunk(
@@ -135,7 +136,7 @@ def test_streaming_tool_call_chunks(mock_container_with_parsers):
             delta_text=chunk_text,
             previous_token_ids=state.previous_token_ids,
             current_token_ids=current_token_ids,
-            delta_token_ids=delta_token_ids
+            delta_token_ids=delta_token_ids,
         )
 
         chunks_generated.append(stream_chunk)
@@ -146,7 +147,10 @@ def test_streaming_tool_call_chunks(mock_container_with_parsers):
         chunk = chunks_generated[i]
         # Incomplete chunks should either have no delta or delta with no tool_calls
         if chunk.choices[0].delta:
-            assert chunk.choices[0].delta.tool_calls is None or len(chunk.choices[0].delta.tool_calls) == 0
+            assert (
+                chunk.choices[0].delta.tool_calls is None
+                or len(chunk.choices[0].delta.tool_calls) == 0
+            )
 
     # Final chunk should complete the tool call
     final_chunk = chunks_generated[-1]
@@ -160,7 +164,8 @@ def test_streaming_reasoning_chunks(mock_container_with_parsers):
     """Test streaming reasoning extraction across multiple chunks.
 
     Simulates: "<think>Let me think carefully.</think>The answer is 42."
-    Chunks: ["<think>", "Let me ", "think ", "carefully.", "</think>", "The answer ", "is 42."]
+    Chunks: ["<think>", "Let me ", "think ", "carefully.", "</think>",
+             "The answer ", "is 42."]
 
     Reasoning content should be separated from regular content.
     """
@@ -171,13 +176,10 @@ def test_streaming_reasoning_chunks(mock_container_with_parsers):
         "carefully.",
         "</think>",
         "The answer ",
-        "is 42."
+        "is 42.",
     ]
 
-    request = ChatCompletionRequest(
-        messages=[],
-        model="GLM-4.5-Air"
-    )
+    request = ChatCompletionRequest(messages=[], model="GLM-4.5-Air")
 
     state = StreamingState()
     accumulated_reasoning = ""
@@ -189,7 +191,7 @@ def test_streaming_reasoning_chunks(mock_container_with_parsers):
             generation={},
             delta_text=chunk_text,
             previous_token_ids=state.previous_token_ids,
-            container=mock_container_with_parsers
+            container=mock_container_with_parsers,
         )
 
         stream_chunk = _create_stream_chunk(
@@ -203,7 +205,7 @@ def test_streaming_reasoning_chunks(mock_container_with_parsers):
             delta_text=chunk_text,
             previous_token_ids=state.previous_token_ids,
             current_token_ids=current_token_ids,
-            delta_token_ids=delta_token_ids
+            delta_token_ids=delta_token_ids,
         )
 
         # Accumulate reasoning and content from delta
@@ -239,7 +241,7 @@ def test_state_management_across_chunks():
     assert state.previous_text == ""
     assert state.previous_token_ids == []
     assert state.accumulated_tool_calls == []
-    assert state.in_reasoning == False
+    assert not state.in_reasoning
 
     # Update with first chunk
     state.update("Hello", [101, 102, 103])
@@ -267,7 +269,10 @@ def test_finish_reason_on_tool_calls(mock_container_with_parsers):
     - Include the tool call in the delta
     """
     # Complete tool call in one chunk (simulating finish chunk)
-    chunk_text = "<tool_call>get_weather\n<arg_key>location</arg_key>\n<arg_value>Paris</arg_value>\n</tool_call>"
+    chunk_text = (
+        "<tool_call>get_weather\n<arg_key>location</arg_key>\n"
+        "<arg_value>Paris</arg_value>\n</tool_call>"
+    )
 
     request = ChatCompletionRequest(
         messages=[],
@@ -280,11 +285,11 @@ def test_finish_reason_on_tool_calls(mock_container_with_parsers):
                     description="Get weather",
                     parameters={
                         "type": "object",
-                        "properties": {"location": {"type": "string"}}
-                    }
-                )
+                        "properties": {"location": {"type": "string"}},
+                    },
+                ),
             )
-        ]
+        ],
     )
 
     stream_chunk = _create_stream_chunk(
@@ -298,7 +303,7 @@ def test_finish_reason_on_tool_calls(mock_container_with_parsers):
         delta_text=chunk_text,
         previous_token_ids=[],
         current_token_ids=[],
-        delta_token_ids=[]
+        delta_token_ids=[],
     )
 
     # Verify finish chunk has finish_reason
@@ -319,10 +324,7 @@ def test_buffering_incomplete_xml(mock_container_with_parsers):
     Should NOT produce tool calls until the XML is complete.
     This prevents malformed tool calls from being emitted.
     """
-    incomplete_chunks = [
-        "<tool_call>get_wea",
-        "ther\n<arg_k"
-    ]
+    incomplete_chunks = ["<tool_call>get_wea", "ther\n<arg_k"]
 
     request = ChatCompletionRequest(
         messages=[],
@@ -333,10 +335,10 @@ def test_buffering_incomplete_xml(mock_container_with_parsers):
                 function=Function(
                     name="get_weather",
                     description="Get weather",
-                    parameters={"type": "object", "properties": {}}
-                )
+                    parameters={"type": "object", "properties": {}},
+                ),
             )
-        ]
+        ],
     )
 
     state = StreamingState()
@@ -355,7 +357,7 @@ def test_buffering_incomplete_xml(mock_container_with_parsers):
             delta_text=chunk_text,
             previous_token_ids=[],
             current_token_ids=[],
-            delta_token_ids=[]
+            delta_token_ids=[],
         )
 
         # Incomplete chunks should NOT produce tool calls
@@ -384,7 +386,7 @@ def test_sse_format_compatibility():
         generation={"text": "Hello world", "index": 0},
         model_name="test-model",
         delta_text="Hello world",
-        container=container
+        container=container,
     )
 
     # Verify chunk can be serialized to JSON for SSE
@@ -399,6 +401,7 @@ def test_sse_format_compatibility():
 
     # Verify SSE message is valid (contains required fields)
     import json
+
     parsed = json.loads(json_str)
     assert "choices" in parsed
     assert "id" in parsed
@@ -419,7 +422,7 @@ def test_token_id_extraction_fallback_strategies(mock_container_with_parsers):
         generation=generation_with_ids,
         delta_text="test",
         previous_token_ids=[101],
-        container=mock_container_with_parsers
+        container=mock_container_with_parsers,
     )
     assert current_ids == [101, 102, 103]
     assert delta_ids == [102, 103]
@@ -430,7 +433,7 @@ def test_token_id_extraction_fallback_strategies(mock_container_with_parsers):
         generation=generation_no_ids,
         delta_text="abc",
         previous_token_ids=[100],
-        container=mock_container_with_parsers
+        container=mock_container_with_parsers,
     )
     # Should encode "abc" and append to previous
     assert len(delta_ids) > 0  # Encoded text
@@ -441,7 +444,7 @@ def test_token_id_extraction_fallback_strategies(mock_container_with_parsers):
         generation={},
         delta_text="",
         previous_token_ids=[],
-        container=mock_container_with_parsers
+        container=mock_container_with_parsers,
     )
     assert current_ids == []
     assert delta_ids == []

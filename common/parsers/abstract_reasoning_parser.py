@@ -5,14 +5,13 @@
 from abc import abstractmethod
 from collections.abc import Sequence
 from functools import cached_property
-from typing import Callable, Optional, Union
+from typing import Callable, Union
 
-from loguru import logger
 from exllamav3 import Tokenizer
 
 from endpoints.OAI.types.chat_completion import (
-    ChatCompletionRequest,
     ChatCompletionMessage,
+    ChatCompletionRequest,
 )
 
 # Alias for compatibility with vLLM naming
@@ -121,8 +120,7 @@ class ReasoningParserManager:
         if name in cls.reasoning_parsers:
             return cls.reasoning_parsers[name]
 
-        raise KeyError(
-            f"reasoning helper: '{name}' not found in reasoning_parsers")
+        raise KeyError(f"reasoning helper: '{name}' not found in reasoning_parsers")
 
     @classmethod
     def _register_module(
@@ -132,8 +130,9 @@ class ReasoningParserManager:
         force: bool = True,
     ) -> None:
         if not issubclass(module, ReasoningParser):
-            raise TypeError("module must be subclass of ReasoningParser, "
-                            f"but got {type(module)}")
+            raise TypeError(
+                "module must be subclass of ReasoningParser, " f"but got {type(module)}"
+            )
         if module_name is None:
             module_name = module.__name__
         if isinstance(module_name, str):
@@ -141,8 +140,9 @@ class ReasoningParserManager:
         for name in module_name:
             if not force and name in cls.reasoning_parsers:
                 existed_module = cls.reasoning_parsers[name]
-                raise KeyError(f"{name} is already registered "
-                               f"at {existed_module.__module__}")
+                raise KeyError(
+                    f"{name} is already registered " f"at {existed_module.__module__}"
+                )
             cls.reasoning_parsers[name] = module
 
     @classmethod
@@ -161,11 +161,11 @@ class ReasoningParserManager:
             raise TypeError(f"force must be a boolean, but got {type(force)}")
 
         # raise the error ahead of time
-        if not (name is None or isinstance(name, str)
-                or _is_list_of(name, str)):
+        if not (name is None or isinstance(name, str) or _is_list_of(name, str)):
             raise TypeError(
                 "name must be None, an instance of str, or a sequence of str, "
-                f"but got {type(name)}")
+                f"but got {type(name)}"
+            )
 
         # use it as a normal method: x.register_module(module=SomeClass)
         if module is not None:

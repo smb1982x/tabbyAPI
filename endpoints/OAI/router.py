@@ -1,18 +1,19 @@
 import asyncio
+from sys import maxsize
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette import EventSourceResponse
-from sys import maxsize
 
 from common import model
 from common.auth import check_api_key
 from common.model import check_embeddings_container, check_model_container
 from common.networking import handle_request_error, run_with_request_disconnect
 from common.tabby_config import config
-from endpoints.OAI.types.completion import CompletionRequest, CompletionResponse
 from endpoints.OAI.types.chat_completion import (
     ChatCompletionRequest,
     ChatCompletionResponse,
 )
+from endpoints.OAI.types.completion import CompletionRequest, CompletionResponse
 from endpoints.OAI.types.embedding import EmbeddingsRequest, EmbeddingsResponse
 from endpoints.OAI.utils.chat_completion import (
     apply_chat_template,
@@ -25,7 +26,6 @@ from endpoints.OAI.utils.completion import (
     stream_generate_completion,
 )
 from endpoints.OAI.utils.embeddings import get_embeddings
-
 
 api_name = "OAI"
 router = APIRouter()

@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # Unit tests for parser manager infrastructure
-# Tests registration and retrieval mechanisms for ToolParserManager and ReasoningParserManager
+# Tests registration and retrieval mechanisms for
+# ToolParserManager and ReasoningParserManager
 
 import pytest
 
-from common.parsers.abstract_tool_parser import ToolParser, ToolParserManager
 from common.parsers.abstract_reasoning_parser import (
     ReasoningParser,
     ReasoningParserManager,
 )
-from endpoints.OAI.types.chat_completion import ChatCompletionRequest
+from common.parsers.abstract_tool_parser import ToolParser, ToolParserManager
 from endpoints.OAI.types.tools import ExtractedToolCallInformation
 
 

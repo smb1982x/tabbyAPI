@@ -1,9 +1,10 @@
 """Completion API protocols"""
 
-from pydantic import BaseModel, Field
 from time import time
 from typing import Dict, List, Optional, Union
 from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from endpoints.OAI.types.common import CommonCompletionRequest, UsageStats
 

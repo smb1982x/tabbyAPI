@@ -28,8 +28,6 @@ from backends.exllamav3.sampler import ExllamaV3SamplerBuilder
 from backends.exllamav3.utils import exllama_supports_nccl
 from backends.exllamav3.vision import clear_image_embedding_cache
 from common.concurrency import iterate_in_threadpool
-from common.parsers.abstract_tool_parser import ToolParser
-from common.parsers.abstract_reasoning_parser import ReasoningParser
 from common.gen_logging import (
     log_generation_params,
     log_metrics,
@@ -39,6 +37,8 @@ from common.hardware import hardware_supports_flash_attn
 from common.health import HealthManager
 from common.multimodal import MultimodalEmbeddingWrapper
 from common.optional_dependencies import check_package_version
+from common.parsers.abstract_reasoning_parser import ReasoningParser
+from common.parsers.abstract_tool_parser import ToolParser
 from common.sampling import BaseSamplerRequest
 from common.templating import PromptTemplate, find_prompt_template
 from common.transformers_utils import HFModel
@@ -270,15 +270,16 @@ class ExllamaV3Container(BaseModelContainer):
 
         # Auto-detect and initialize parsers for GLM-4.5 models
         model_name = model_directory.name.lower()
-        is_glm45 = (
-            "glm" in model_name and
-            ("4.5" in model_name or "4-5" in model_name or "45" in model_name)
+        is_glm45 = "glm" in model_name and (
+            "4.5" in model_name or "4-5" in model_name or "45" in model_name
         )
 
         if is_glm45:
             try:
+                from common.parsers.glm4_moe_reasoning_parser import (
+                    Glm4MoeModelReasoningParser,
+                )
                 from common.parsers.glm4_moe_tool_parser import Glm4MoeModelToolParser
-                from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
 
                 self.tool_parser = Glm4MoeModelToolParser(self.tokenizer)
                 self.reasoning_parser = Glm4MoeModelReasoningParser(self.tokenizer)

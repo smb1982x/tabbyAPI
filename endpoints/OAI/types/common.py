@@ -1,7 +1,8 @@
 """Common types for OAI."""
 
-from pydantic import BaseModel, Field
 from typing import Optional, Union
+
+from pydantic import BaseModel, Field
 
 from common.sampling import BaseSamplerRequest, get_default_sampler_value
 

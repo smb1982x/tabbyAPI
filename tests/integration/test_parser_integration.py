@@ -3,16 +3,16 @@
 # Tests full request/response cycle with tool calling and reasoning extraction
 
 import json
-import pytest
 from unittest.mock import MagicMock
 
-from endpoints.OAI.utils.chat_completion import _parse_generation_output
-from endpoints.OAI.types.chat_completion import ChatCompletionRequest
-from endpoints.OAI.types.tools import ToolSpec, Function
-from backends.exllamav3.model import ExllamaV3Container
-from common.parsers.glm4_moe_tool_parser import Glm4MoeModelToolParser
-from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
+import pytest
 
+from backends.exllamav3.model import ExllamaV3Container
+from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
+from common.parsers.glm4_moe_tool_parser import Glm4MoeModelToolParser
+from endpoints.OAI.types.chat_completion import ChatCompletionRequest
+from endpoints.OAI.types.tools import Function, ToolSpec
+from endpoints.OAI.utils.chat_completion import _parse_generation_output
 
 # ========================================================================
 # Test Fixtures
@@ -22,6 +22,7 @@ from common.parsers.glm4_moe_reasoning_parser import Glm4MoeModelReasoningParser
 @pytest.fixture
 def mock_tokenizer():
     """Create mock tokenizer for parser initialization."""
+
     class MockTokenizer:
         def get_vocab(self):
             return {
@@ -33,6 +34,7 @@ def mock_tokenizer():
                 "<|system|>": 151331,
                 "<|user|>": 151333,
             }
+
     return MockTokenizer()
 
 
@@ -62,9 +64,12 @@ def mock_container_without_parsers():
 def test_tool_calling_integration(mock_container_with_parsers):
     """Test tool calling through full generation pipeline."""
     generation = {
-        "text": "<tool_call>get_weather\n<arg_key>location</arg_key>\n<arg_value>Paris</arg_value>\n</tool_call>",
+        "text": (
+            "<tool_call>get_weather\n<arg_key>location</arg_key>\n"
+            "<arg_value>Paris</arg_value>\n</tool_call>"
+        ),
         "prompt_tokens": 50,
-        "gen_tokens": 20
+        "gen_tokens": 20,
     }
 
     request = ChatCompletionRequest(
@@ -78,11 +83,11 @@ def test_tool_calling_integration(mock_container_with_parsers):
                     description="Get current weather",
                     parameters={
                         "type": "object",
-                        "properties": {"location": {"type": "string"}}
-                    }
-                )
+                        "properties": {"location": {"type": "string"}},
+                    },
+                ),
             )
-        ]
+        ],
     )
 
     # Parse generation output
@@ -104,21 +109,23 @@ def test_tool_calling_integration(mock_container_with_parsers):
 def test_reasoning_extraction_integration(mock_container_with_parsers):
     """Test reasoning extraction through generation pipeline."""
     generation = {
-        "text": "<think>Let me analyze the user's request step by step.</think>The answer is 42.",
+        "text": (
+            "<think>Let me analyze the user's request step by step.</think>"
+            "The answer is 42."
+        ),
         "prompt_tokens": 30,
-        "gen_tokens": 15
+        "gen_tokens": 15,
     }
 
-    request = ChatCompletionRequest(
-        messages=[],
-        model="GLM-4.5-Air"
-    )
+    request = ChatCompletionRequest(messages=[], model="GLM-4.5-Air")
 
     # Parse generation output
     parsed = _parse_generation_output(generation, request, mock_container_with_parsers)
 
     # Verify reasoning extracted
-    assert parsed["reasoning_content"] == "Let me analyze the user's request step by step."
+    assert (
+        parsed["reasoning_content"] == "Let me analyze the user's request step by step."
+    )
     assert parsed["content"] == "The answer is 42."
 
     # Verify no tool calls (none in output)
@@ -128,9 +135,14 @@ def test_reasoning_extraction_integration(mock_container_with_parsers):
 def test_combined_tool_and_reasoning(mock_container_with_parsers):
     """Test combined tool calling and reasoning extraction."""
     generation = {
-        "text": "<think>User needs weather information for Tokyo.</think>Let me check that for you.<tool_call>get_weather\n<arg_key>location</arg_key>\n<arg_value>Tokyo</arg_value>\n</tool_call>",
+        "text": (
+            "<think>User needs weather information for Tokyo.</think>"
+            "Let me check that for you.<tool_call>get_weather\n"
+            "<arg_key>location</arg_key>\n<arg_value>Tokyo</arg_value>\n"
+            "</tool_call>"
+        ),
         "prompt_tokens": 40,
-        "gen_tokens": 25
+        "gen_tokens": 25,
     }
 
     request = ChatCompletionRequest(
@@ -144,11 +156,11 @@ def test_combined_tool_and_reasoning(mock_container_with_parsers):
                     description="Get weather info",
                     parameters={
                         "type": "object",
-                        "properties": {"location": {"type": "string"}}
-                    }
-                )
+                        "properties": {"location": {"type": "string"}},
+                    },
+                ),
             )
-        ]
+        ],
     )
 
     # Parse generation output
@@ -183,13 +195,10 @@ def test_parser_error_fallback(mock_container_with_parsers):
     generation = {
         "text": "Hello world, this is a normal response.",
         "prompt_tokens": 10,
-        "gen_tokens": 5
+        "gen_tokens": 5,
     }
 
-    request = ChatCompletionRequest(
-        messages=[],
-        model="GLM-4.5-Air"
-    )
+    request = ChatCompletionRequest(messages=[], model="GLM-4.5-Air")
 
     # Should not crash - should fallback to raw text
     parsed = _parse_generation_output(generation, request, container)
@@ -203,9 +212,13 @@ def test_parser_error_fallback(mock_container_with_parsers):
 def test_response_structure_matches_openai(mock_container_with_parsers):
     """Verify parsed output structure matches OpenAI specification."""
     generation = {
-        "text": "<tool_call>test_function\n<arg_key>arg1</arg_key>\n<arg_value>value1</arg_value>\n<arg_key>arg2</arg_key>\n<arg_value>value2</arg_value>\n</tool_call>",
+        "text": (
+            "<tool_call>test_function\n<arg_key>arg1</arg_key>\n"
+            "<arg_value>value1</arg_value>\n<arg_key>arg2</arg_key>\n"
+            "<arg_value>value2</arg_value>\n</tool_call>"
+        ),
         "prompt_tokens": 20,
-        "gen_tokens": 10
+        "gen_tokens": 10,
     }
 
     request = ChatCompletionRequest(
@@ -221,12 +234,12 @@ def test_response_structure_matches_openai(mock_container_with_parsers):
                         "type": "object",
                         "properties": {
                             "arg1": {"type": "string"},
-                            "arg2": {"type": "string"}
-                        }
-                    }
-                )
+                            "arg2": {"type": "string"},
+                        },
+                    },
+                ),
             )
-        ]
+        ],
     )
 
     parsed = _parse_generation_output(generation, request, mock_container_with_parsers)
@@ -258,20 +271,25 @@ def test_response_structure_matches_openai(mock_container_with_parsers):
 def test_without_parsers_backward_compatibility(mock_container_without_parsers):
     """Test backward compatibility when parsers are not available."""
     generation = {
-        "text": "Hello world, this is a standard response without any special formatting.",
+        "text": (
+            "Hello world, this is a standard response "
+            "without any special formatting."
+        ),
         "prompt_tokens": 10,
-        "gen_tokens": 5
+        "gen_tokens": 5,
     }
 
-    request = ChatCompletionRequest(
-        messages=[],
-        model="standard-model"
-    )
+    request = ChatCompletionRequest(messages=[], model="standard-model")
 
     # Should work without parsers - no errors
-    parsed = _parse_generation_output(generation, request, mock_container_without_parsers)
+    parsed = _parse_generation_output(
+        generation, request, mock_container_without_parsers
+    )
 
     # Verify basic functionality preserved
-    assert parsed["content"] == "Hello world, this is a standard response without any special formatting."
+    assert (
+        parsed["content"]
+        == "Hello world, this is a standard response without any special formatting."
+    )
     assert parsed["reasoning_content"] is None
     assert parsed["tool_calls"] is None

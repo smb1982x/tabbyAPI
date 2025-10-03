@@ -7,9 +7,10 @@ Also serves as a common module for completions and chat completions.
 import asyncio
 import pathlib
 from asyncio import CancelledError
+from typing import List, Optional, Union
+
 from fastapi import HTTPException, Request
 from loguru import logger
-from typing import List, Optional, Union
 
 from common import model
 from common.auth import get_key_permission
@@ -22,13 +23,13 @@ from common.networking import (
 )
 from common.tabby_config import config
 from common.utils import unwrap
-from endpoints.OAI.types.completion import (
-    CompletionRequest,
-    CompletionResponse,
-    CompletionRespChoice,
-    CompletionLogProbs,
-)
 from endpoints.OAI.types.common import UsageStats
+from endpoints.OAI.types.completion import (
+    CompletionLogProbs,
+    CompletionRequest,
+    CompletionRespChoice,
+    CompletionResponse,
+)
 
 
 def _parse_gen_request_id(n: int, request_id: str, task_idx: int):

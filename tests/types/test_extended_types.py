@@ -3,12 +3,12 @@
 # Tests ChatCompletionMessage with reasoning_content and ExtractedToolCallInformation
 
 import json
+
 import pytest
 from pydantic import ValidationError
 
 from endpoints.OAI.types.chat_completion import ChatCompletionMessage
-from endpoints.OAI.types.tools import ExtractedToolCallInformation, ToolCall, Function
-
+from endpoints.OAI.types.tools import ExtractedToolCallInformation, Function, ToolCall
 
 # ========================================================================
 # ChatCompletionMessage Tests
@@ -20,21 +20,20 @@ def test_chat_completion_message_with_reasoning():
     message = ChatCompletionMessage(
         role="assistant",
         content="The answer is 42.",
-        reasoning_content="Let me think about this carefully step by step."
+        reasoning_content="Let me think about this carefully step by step.",
     )
 
     assert message.role == "assistant"
     assert message.content == "The answer is 42."
-    assert message.reasoning_content == "Let me think about this carefully step by step."
+    assert (
+        message.reasoning_content == "Let me think about this carefully step by step."
+    )
 
 
 def test_chat_completion_message_reasoning_optional():
     """Test that reasoning_content is optional (backwards compatibility)."""
     # Without reasoning_content - should work
-    message = ChatCompletionMessage(
-        role="assistant",
-        content="Hello world"
-    )
+    message = ChatCompletionMessage(role="assistant", content="Hello world")
 
     assert message.role == "assistant"
     assert message.content == "Hello world"
@@ -46,7 +45,7 @@ def test_chat_completion_message_serialization():
     message = ChatCompletionMessage(
         role="assistant",
         content="The final answer",
-        reasoning_content="Analyzing the problem deeply"
+        reasoning_content="Analyzing the problem deeply",
     )
 
     # Serialize to dict
@@ -67,7 +66,7 @@ def test_chat_completion_message_deserialization():
     data = {
         "role": "assistant",
         "content": "Answer text",
-        "reasoning_content": "Thinking process"
+        "reasoning_content": "Thinking process",
     }
 
     message = ChatCompletionMessage(**data)
@@ -80,14 +79,14 @@ def test_chat_completion_message_with_tool_calls():
     tool_call = ToolCall(
         id="call_123",
         type="function",
-        function=Function(name="test_func", arguments="{}")
+        function=Function(name="test_func", arguments="{}"),
     )
 
     message = ChatCompletionMessage(
         role="assistant",
         content="Let me check that.",
         reasoning_content="User needs function call",
-        tool_calls=[tool_call]
+        tool_calls=[tool_call],
     )
 
     assert message.reasoning_content == "User needs function call"
@@ -106,13 +105,11 @@ def test_extracted_tool_call_information_validation():
     tool_call = ToolCall(
         id="call_456",
         type="function",
-        function=Function(name="get_weather", arguments='{"location": "Paris"}')
+        function=Function(name="get_weather", arguments='{"location": "Paris"}'),
     )
 
     info = ExtractedToolCallInformation(
-        tools_called=True,
-        tool_calls=[tool_call],
-        content="Some remaining text"
+        tools_called=True, tool_calls=[tool_call], content="Some remaining text"
     )
 
     assert info.tools_called is True
@@ -136,7 +133,7 @@ def test_extracted_tool_call_information_no_tools():
     info = ExtractedToolCallInformation(
         tools_called=False,
         tool_calls=[],
-        content="Regular response without any tool calls"
+        content="Regular response without any tool calls",
     )
 
     assert info.tools_called is False
@@ -149,16 +146,11 @@ def test_extracted_tool_call_information_serialization():
     tool_call = ToolCall(
         id="call_789",
         type="function",
-        function=Function(
-            name="calculate",
-            arguments='{"x": 10, "y": 20}'
-        )
+        function=Function(name="calculate", arguments='{"x": 10, "y": 20}'),
     )
 
     info = ExtractedToolCallInformation(
-        tools_called=True,
-        tool_calls=[tool_call],
-        content="Calculating..."
+        tools_called=True, tool_calls=[tool_call], content="Calculating..."
     )
 
     # Serialize to dict
@@ -183,8 +175,7 @@ def test_backwards_compatibility():
     """Test backwards compatibility with existing code."""
     # Old code without reasoning_content should still work
     message = ChatCompletionMessage(
-        role="user",
-        content="Test message without reasoning"
+        role="user", content="Test message without reasoning"
     )
 
     # New field should exist but be None
@@ -235,14 +226,12 @@ def test_tool_call_nested_structure():
         type="function",
         function=Function(
             name="complex_function",
-            arguments='{"nested": {"key": "value", "number": 42}, "array": [1, 2, 3]}'
-        )
+            arguments='{"nested": {"key": "value", "number": 42}, "array": [1, 2, 3]}',
+        ),
     )
 
     info = ExtractedToolCallInformation(
-        tools_called=True,
-        tool_calls=[tool_call],
-        content=None
+        tools_called=True, tool_calls=[tool_call], content=None
     )
 
     # Verify nested structure is preserved in serialization
@@ -264,7 +253,9 @@ def test_multiple_tool_calls_in_extracted_info():
         ToolCall(
             id=f"call_{i}",
             type="function",
-            function=Function(name=f"function_{i}", arguments='{"index": ' + str(i) + '}')
+            function=Function(
+                name=f"function_{i}", arguments='{"index": ' + str(i) + "}"
+            ),
         )
         for i in range(3)
     ]
@@ -272,7 +263,7 @@ def test_multiple_tool_calls_in_extracted_info():
     info = ExtractedToolCallInformation(
         tools_called=True,
         tool_calls=tool_calls,
-        content="Multiple function calls detected"
+        content="Multiple function calls detected",
     )
 
     assert len(info.tool_calls) == 3
@@ -289,19 +280,11 @@ def test_multiple_tool_calls_in_extracted_info():
 def test_empty_content_serialization():
     """Test serialization with None and empty string content."""
     # None content
-    info1 = ExtractedToolCallInformation(
-        tools_called=True,
-        tool_calls=[],
-        content=None
-    )
+    info1 = ExtractedToolCallInformation(tools_called=True, tool_calls=[], content=None)
     dict1 = info1.model_dump()
     assert dict1["content"] is None
 
     # Empty string content
-    info2 = ExtractedToolCallInformation(
-        tools_called=False,
-        tool_calls=[],
-        content=""
-    )
+    info2 = ExtractedToolCallInformation(tools_called=False, tool_calls=[], content="")
     dict2 = info2.model_dump()
     assert dict2["content"] == ""

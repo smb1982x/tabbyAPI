@@ -1,9 +1,9 @@
 import json
-from loguru import logger
 from typing import List
 
-from endpoints.OAI.types.tools import ToolCall
+from loguru import logger
 
+from endpoints.OAI.types.tools import ToolCall
 
 TOOL_CALL_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",

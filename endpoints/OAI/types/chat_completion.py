@@ -1,10 +1,11 @@
-from pydantic import AliasChoices, BaseModel, Field, field_validator
 from time import time
-from typing import Literal, Union, List, Optional, Dict
+from typing import Dict, List, Literal, Optional, Union
 from uuid import uuid4
 
-from endpoints.OAI.types.common import UsageStats, CommonCompletionRequest
-from endpoints.OAI.types.tools import ToolSpec, ToolCall
+from pydantic import AliasChoices, BaseModel, Field, field_validator
+
+from endpoints.OAI.types.common import CommonCompletionRequest, UsageStats
+from endpoints.OAI.types.tools import ToolCall, ToolSpec
 
 
 class ChatCompletionLogprob(BaseModel):
